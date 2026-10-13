@@ -1,0 +1,42 @@
+{
+  "Mysql": {
+    "Host": "127.0.0.1",
+    "Port": 3306,
+    "User": "ark",
+    "Password": "",
+    "Database": "creaturecolors",
+    "TableName": "creaturecolors_templates"
+  },
+  "Permission": "CreatureColors.Use",
+  "Commands": {
+    "SetColorRegion": "/setcr",
+    "SaveTemplate": "/savecrt",
+    "ApplyTemplateAOE": "/setcrtaoe"
+  },
+  "AOE": {
+    "DefaultRadius": 300,
+    "MaxRadius": 3000
+  },
+  "OverwritePromptTimeoutSeconds": 30,
+  "TemplateNameMaxLength": 32,
+  "Messages": {
+    "NoPermission": "You don't have permission to color creatures.",
+    "NoTarget": "Look at one of your tames first.",
+    "NotYourTame": "That creature isn't owned by you or your tribe.",
+    "InvalidRegion": "Region must be 0-5 and used by this species.",
+    "InvalidColor": "That color ID isn't valid.",
+    "RegionSet": "Region {0} set to color {1}.",
+    "TemplateSaved": "Template '{0}' saved.",
+    "TemplateOverwritten": "Template '{0}' overwritten.",
+    "TemplateExists": "Template '{0}' already exists, do you wish to overwrite y/n?",
+    "OverwriteCancelled": "Save of template '{0}' cancelled.",
+    "OverwriteExpired": "No answer received, save of template '{0}' cancelled.",
+    "TemplateNotFound": "No template named '{0}'.",
+    "InvalidTemplateName": "Template names can be 1-{0} characters: letters, numbers, - and _.",
+    "AOEResult": "Applied '{0}' to {1} creature(s), skipped {2} of a different species.",
+    "DatabaseError": "Couldn't reach the template database. Try again later.",
+    "UsageSetCR": "Usage: /setcr <region 0-5> <color id>",
+    "UsageSaveCRT": "Usage: /savecrt <name>",
+    "UsageAOE": "Usage: /setcrtaoe <name> [radius up to {0}]"
+  }
+}

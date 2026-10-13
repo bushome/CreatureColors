@@ -1,0 +1,9 @@
+{
+  "name": "creaturecolors",
+  "version": "1.0.0",
+  "dependencies": [
+    "fmt",
+    "libmariadb"
+  ],
+  "builtin-baseline": "ff9b47f7c77a9a49a99c013a8895e60fca360467"
+}
