@@ -1,0 +1,411 @@
+#include "PluginManager.h"
+
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+
+#include <Logger/Logger.h>
+#include "Tools.h"
+
+#include "../IBaseApi.h"
+#include "../Commands.h"
+#include "../Hooks.h"
+#include <Timer.h>
+#include "../Ark/ApiUtils.h"
+#include "Requests.h"
+
+namespace API
+{
+	PluginManager& PluginManager::Get()
+	{
+		static PluginManager instance;
+		return instance;
+	}
+
+	nlohmann::json PluginManager::ReadSettingsConfig()
+	{
+		nlohmann::json config = nlohmann::json::object({});
+
+		const std::string config_path = Tools::GetCurrentDir() + "/config.json";
+		std::ifstream file{ config_path };
+		if (!file.is_open())
+		{
+			return config;
+		}
+
+		file >> config;
+		file.close();
+
+		return config;
+	}
+
+	void PluginManager::LoadAllPlugins()
+	{
+		namespace fs = std::filesystem;
+
+		const std::string dir_path = Tools::GetCurrentDir() + "/" + game_api->GetApiName() + "/Plugins";
+
+		for (const auto& dir_name : fs::directory_iterator(dir_path))
+		{
+			const auto& path = dir_name.path();
+			if (!is_directory(path))
+			{
+				continue;
+			}
+
+			const auto filename = path.filename().stem().generic_string();
+
+			const std::string dir_file_path = Tools::GetCurrentDir() + "/" + game_api->GetApiName() + "/Plugins/" +
+				filename;
+			const std::string full_dll_path = dir_file_path + "/" + filename + ".dll";
+			const std::string new_full_dll_path = dir_file_path + "/" + filename + ".dll.ArkApi";
+
+			try
+			{
+				// Loads the new .dll.ArkApi if it exists on startup as well
+				if (fs::exists(new_full_dll_path))
+				{
+					copy_file(new_full_dll_path, full_dll_path, fs::copy_options::overwrite_existing);
+					fs::remove(new_full_dll_path);
+				}
+
+				std::stringstream stream;
+
+				std::shared_ptr<Plugin>& plugin = LoadPlugin(filename);
+
+				stream << "Loaded plugin " << (plugin->full_name.empty() ? plugin->name : plugin->full_name) << " V" <<
+					plugin->version << " (" << plugin->description << ")";
+
+				Log::GetLog()->info(stream.str());
+			}
+			catch (const std::exception& error)
+			{
+				Log::GetLog()->warn("({}) {}", __FUNCTION__, error.what());
+			}
+		}
+
+		CheckPluginsDependencies();
+
+		// Set auto plugins reloading
+		auto settings = ReadSettingsConfig();
+
+		enable_plugin_reload_ = settings["settings"].value("AutomaticPluginReloading", false);
+		if (enable_plugin_reload_)
+		{
+			reload_sleep_seconds_ = settings["settings"].value("AutomaticPluginReloadSeconds", 5);
+			save_world_before_reload_ = settings["settings"].value("SaveWorldBeforePluginReload", true);
+		}
+
+		Log::GetLog()->info("Loaded all plugins\n");
+	}
+
+	std::shared_ptr<Plugin>& PluginManager::LoadPlugin(const std::string& plugin_name) noexcept(false)
+	{
+		//MovePDB(plugin_name);
+
+		namespace fs = std::filesystem;
+
+		const std::string dir_path = Tools::GetCurrentDir() + "/" + game_api->GetApiName() + "/Plugins/" + plugin_name;
+		const std::string full_dll_path = dir_path + "/" + plugin_name + ".dll";
+
+		if (!fs::exists(full_dll_path))
+		{
+			throw std::runtime_error("Plugin " + plugin_name + " does not exist");
+		}
+
+		if (IsPluginLoaded(plugin_name))
+		{
+			throw std::runtime_error("Plugin " + plugin_name + " was already loaded");
+		}
+
+		auto plugin_info = ReadPluginInfo(plugin_name);
+
+		// Check version
+		const auto required_version = static_cast<float>(plugin_info["MinApiVersion"]);
+		if (required_version != .0f && game_api->GetVersion() < required_version)
+		{
+			throw std::runtime_error("Plugin " + plugin_name + " requires newer API version!");
+		}
+
+		if (!dll_search_initialized_)
+		{
+			SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS);
+			dll_search_initialized_ = true;
+		}
+
+		{
+			std::wstring wdir(dir_path.begin(), dir_path.end());
+			DLL_DIRECTORY_COOKIE cookie = AddDllDirectory(wdir.c_str());
+			if (cookie)
+			{
+				dll_dir_cookies_[plugin_name] = cookie;
+			}
+			else
+			{
+				Log::GetLog()->warn("AddDllDirectory failed for '{}' (error {})", dir_path, GetLastError());
+			}
+		}
+
+		std::wstring wfull(full_dll_path.begin(), full_dll_path.end());
+		HINSTANCE h_module = LoadLibraryExW(wfull.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS);
+		if (h_module == nullptr)
+		{
+			throw std::runtime_error(
+				"Failed to load plugin - " + plugin_name + "\nError code: " + std::to_string(GetLastError()));
+		}
+
+		// Calls Plugin_Init (if found) after loading DLL
+		// Note: DllMain callbacks during LoadLibrary is load-locked so we cannot do things like WaitForMultipleObjects on threads
+		using pfnPluginInit = void(__fastcall*)();
+		const auto pfn_init = reinterpret_cast<pfnPluginInit>(GetProcAddress(h_module, "Plugin_Init"));
+		if (pfn_init != nullptr)
+		{
+			pfn_init();
+		}
+
+		return loaded_plugins_.emplace_back(std::make_shared<Plugin>(h_module, plugin_name, plugin_info["FullName"],
+			plugin_info["Description"], plugin_info["Version"],
+			plugin_info["MinApiVersion"],
+			plugin_info["Dependencies"],
+			plugin_info.value("PreventUnloading", false)));
+	}
+
+	void PluginManager::UnloadPlugin(const std::string& plugin_name) noexcept(false)
+	{
+		namespace fs = std::filesystem;
+
+		const auto iter = FindPlugin(plugin_name);
+		if (iter == loaded_plugins_.end())
+		{
+			throw std::runtime_error("Plugin " + plugin_name + " is not loaded");
+		}
+
+		if ((*iter)->prevent_unloading)
+		{
+			throw std::runtime_error("unloading is disabled (PreventUnloading=true)");
+		}
+
+		const std::string dir_path = Tools::GetCurrentDir() + "/" + game_api->GetApiName() + "/Plugins/" + plugin_name;
+		const std::string full_dll_path = dir_path + "/" + plugin_name + ".dll";
+
+		if (!fs::exists(full_dll_path.c_str()))
+		{
+			throw std::runtime_error("Plugin " + plugin_name + " does not exist");
+		}
+
+		// Calls Plugin_Unload (if found) just before unloading DLL to let DLL gracefully clean up
+		// Note: DllMain callbacks during FreeLibrary is load-locked so we cannot do things like WaitForMultipleObjects on threads
+		using pfnPluginUnload = void(__fastcall*)();
+		const auto pfn_unload = reinterpret_cast<pfnPluginUnload>(GetProcAddress((*iter)->h_module, "Plugin_Unload"));
+		if (pfn_unload != nullptr)
+		{
+			pfn_unload();
+		}
+
+		// Cleans up all pending callbacks to prevent a server crash due to stale invocations after the plugin is unloaded.
+		API::Requests::Get().UnregisterCallbacksForModule((*iter)->h_module);
+
+		API::Timer::Get().UnloadTimersFromModule(FString(full_dll_path).Replace(L"/", L"\\"));
+		dynamic_cast<AsaApi::ApiUtils&>(*API::game_api->GetApiUtils()).RemoveMessagingManagerInternal(FString(full_dll_path).Replace(L"/", L"\\"));
+
+		dynamic_cast<AsaApi::Commands&>(*API::game_api->GetCommands()).RemoveAllCommandsFromModule((*iter)->h_module);
+
+		// Remove all hooks registered by this plugin before freeing its memory,
+		// so no live hook target points into the unloaded DLL image.
+		dynamic_cast<API::Hooks&>(*API::game_api->GetHooks()).DisableAllHooksFromModule((*iter)->h_module);
+
+		const BOOL result = FreeLibrary((*iter)->h_module);
+		if (result == 0)
+		{
+			throw std::runtime_error(
+				"Failed to unload plugin - " + plugin_name + "\nError code: " + std::to_string(GetLastError()));
+		}
+
+		auto cookieIt = dll_dir_cookies_.find(plugin_name);
+		if (cookieIt != dll_dir_cookies_.end())
+		{
+			RemoveDllDirectory(cookieIt->second);
+			dll_dir_cookies_.erase(cookieIt);
+		}
+
+		loaded_plugins_.erase(remove(loaded_plugins_.begin(), loaded_plugins_.end(), *iter), loaded_plugins_.end());
+		prevent_unload_warned_plugins_.erase(plugin_name);
+	}
+
+	nlohmann::json PluginManager::ReadPluginInfo(const std::string& plugin_name)
+	{
+		nlohmann::json plugin_info_result({});
+		nlohmann::json plugin_info({});
+
+		const std::string dir_path = Tools::GetCurrentDir() + "/" + game_api->GetApiName() + "/Plugins/" + plugin_name;
+		const std::string config_path = dir_path + "/PluginInfo.json";
+
+		std::ifstream file{ config_path };
+		if (file.is_open())
+		{
+			file >> plugin_info;
+			file.close();
+		}
+
+		try
+		{
+			plugin_info_result["FullName"] = plugin_info.value("FullName", "");
+			plugin_info_result["Description"] = plugin_info.value("Description", "No description");
+			plugin_info_result["Version"] = plugin_info.value("Version", 1.00f);
+			plugin_info_result["MinApiVersion"] = plugin_info.value("MinApiVersion", .0f);
+			plugin_info_result["Dependencies"] = plugin_info.value("Dependencies", std::vector<std::string>{});
+			plugin_info_result["PreventUnloading"] = plugin_info.value("PreventUnloading", false);
+		}
+		catch (const std::exception& error)
+		{
+			Log::GetLog()->warn("({}) {}", __FUNCTION__, error.what());
+		}
+
+		return plugin_info_result;
+	}
+
+	void PluginManager::CheckPluginsDependencies()
+	{
+		for (const auto& plugin : loaded_plugins_)
+		{
+			if (plugin->dependencies.empty())
+			{
+				continue;
+			}
+
+			for (const std::string& dependency : plugin->dependencies)
+			{
+				if (!IsPluginLoaded(dependency))
+				{
+					Log::GetLog()->error("'{}' is missing a required plugin dependency: '{}'. The plugin may not function correctly", plugin->name, dependency);	
+				}
+			}
+		}
+	}
+
+	std::vector<std::shared_ptr<Plugin>>::const_iterator PluginManager::FindPlugin(const std::string& plugin_name)
+	{
+		const auto iter = std::find_if(loaded_plugins_.begin(), loaded_plugins_.end(),
+			[plugin_name](const std::shared_ptr<Plugin>& plugin) -> bool
+			{
+				return plugin->name == plugin_name;
+			});
+
+		return iter;
+	}
+
+	bool PluginManager::IsPluginLoaded(const std::string& plugin_name)
+	{
+		return FindPlugin(plugin_name) != loaded_plugins_.end();
+	}
+
+	void PluginManager::DetectPluginChangesTimerCallback()
+	{
+		auto& pluginManager = Get();
+
+		const time_t now = time(nullptr);
+		if (now < pluginManager.next_reload_check_
+			|| !pluginManager.enable_plugin_reload_)
+		{
+			return;
+		}
+
+		pluginManager.next_reload_check_ = now + pluginManager.reload_sleep_seconds_;
+
+		pluginManager.DetectPluginChanges();
+	}
+
+	void PluginManager::DetectPluginChanges()
+	{
+		namespace fs = std::filesystem;
+
+		// Prevents saving world multiple times if multiple plugins are queued to be reloaded
+		bool save_world = save_world_before_reload_;
+
+		for (const auto& dir_name : fs::directory_iterator(
+			Tools::GetCurrentDir() + "/" + game_api->GetApiName() + "/Plugins"))
+		{
+			const auto& path = dir_name.path();
+			if (!is_directory(path))
+			{
+				continue;
+			}
+
+			const auto filename = path.filename().stem().generic_string();
+
+			const std::string plugin_folder = path.generic_string() + "/";
+
+			const std::string plugin_file_path = plugin_folder + filename + ".dll";
+			const std::string new_plugin_file_path = plugin_folder + filename + ".dll.ArkApi";
+
+			const auto plugin_iter = FindPlugin(filename);
+			if (fs::exists(new_plugin_file_path) && plugin_iter != loaded_plugins_.end())
+			{
+				// Reads the loaded plugin's flag, not the pending .dll.ArkApi update
+				if ((*plugin_iter)->prevent_unloading)
+				{
+					if (prevent_unload_warned_plugins_.insert(filename).second)
+					{
+						Log::GetLog()->warn(
+							"Plugin '{}' has PreventUnloading=true. "
+							"Update pending - restart the server to apply {}.dll.ArkApi.",
+							filename, filename);
+					}
+					continue;
+				}
+
+#ifndef ATLAS_GAME // not on ATLAS
+				// Save the world in case the unload/load procedure causes crash
+				if (save_world)
+				{
+					Log::GetLog()->info("Saving world before reloading plugins");
+					AsaApi::GetApiUtils().GetShooterGameMode()->SaveWorld(true, true, false);
+					Log::GetLog()->info("World saved.");
+
+					save_world = false; // do not save again if multiple plugins are reloaded in this loop
+				}
+#endif
+				try
+				{
+					UnloadPlugin(filename);
+
+					copy_file(new_plugin_file_path, plugin_file_path, fs::copy_options::overwrite_existing);
+					fs::remove(new_plugin_file_path);
+
+					// Wait 1 second before loading to let things clean up correctly...
+					// This will load the plugin in the next timer callback
+					//auto_reload_pending_plugins_.emplace_back(filename);
+
+					LoadPlugin(filename);
+
+					Log::GetLog()->info("Reloaded plugin - {}", filename);
+				}
+				catch (const std::exception& error)
+				{
+					Log::GetLog()->warn("({}) {}", __FUNCTION__, error.what());
+					continue;
+				}
+			}
+		}
+	}
+
+	void PluginManager::MovePDB(const std::string& pluginname)
+	{
+		try
+		{
+			namespace fs = std::filesystem;
+
+			std::string source = AsaApi::Tools::GetCurrentDir() + "/ArkApi/Plugins/" + pluginname + "/" + pluginname + ".pdb";
+			std::string destination = AsaApi::Tools::GetCurrentDir() + "/" + pluginname + ".pdb";
+
+			if (fs::exists(source))
+			{
+				fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+				fs::remove(source);
+			}
+		}
+		catch (const std::exception&) {
+			Log::GetLog()->error("Failed to move PDB for '{}'", pluginname);
+		}
+	}
+} // namespace API
