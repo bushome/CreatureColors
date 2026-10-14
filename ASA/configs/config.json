@@ -1,4 +1,8 @@
 {
+  "UseMysql": true,
+  "SQLite": {
+    "File": "database/creaturecolors.db"
+  },
   "Mysql": {
     "Host": "127.0.0.1",
     "Port": 3306,
@@ -7,11 +11,15 @@
     "Database": "creaturecolors",
     "TableName": "creaturecolors_templates"
   },
-  "Permission": "CreatureColors.Use",
+  "Permission": "Patrons",
   "Commands": {
     "SetColorRegion": "/setcr",
     "SaveTemplate": "/savecrt",
-    "ApplyTemplateAOE": "/setcrtaoe"
+    "ApplyTemplateAOE": "/setcrtaoe",
+    "ConfirmYes": "/y",
+    "ConfirmNo": "/n",
+    "ListTemplates": "/listcrt",
+    "DeleteTemplate": "/delcrt"
   },
   "AOE": {
     "DefaultRadius": 300,
@@ -19,6 +27,10 @@
   },
   "OverwritePromptTimeoutSeconds": 30,
   "TemplateNameMaxLength": 32,
+  "List": {
+    "LineChars": 180,
+    "MaxLines": 5
+  },
   "Messages": {
     "NoPermission": "You don't have permission to color creatures.",
     "NoTarget": "Look at one of your tames first.",
@@ -28,15 +40,28 @@
     "RegionSet": "Region {0} set to color {1}.",
     "TemplateSaved": "Template '{0}' saved.",
     "TemplateOverwritten": "Template '{0}' overwritten.",
-    "TemplateExists": "Template '{0}' already exists, do you wish to overwrite y/n?",
+    "TemplateExists": "Template '{0}' already exists, do you wish to overwrite? {1} or {2}",
     "OverwriteCancelled": "Save of template '{0}' cancelled.",
     "OverwriteExpired": "No answer received, save of template '{0}' cancelled.",
+    "NothingToConfirm": "There's no template overwrite waiting for an answer.",
     "TemplateNotFound": "No template named '{0}'.",
     "InvalidTemplateName": "Template names can be 1-{0} characters: letters, numbers, - and _.",
+    "RadiusCapped": "Radius {0} is above the limit, using {1} instead.",
     "AOEResult": "Applied '{0}' to {1} creature(s), skipped {2} of a different species.",
     "DatabaseError": "Couldn't reach the template database. Try again later.",
     "UsageSetCR": "Usage: /setcr <region 0-5> <color id>",
     "UsageSaveCRT": "Usage: /savecrt <name>",
-    "UsageAOE": "Usage: /setcrtaoe <name> [radius up to {0}]"
+    "UsageAOE": "Usage: /setcrtaoe <name> [radius up to {0}]",
+    "UsageDelCRT": "Usage: /delcrt <name>",
+    "UsageListCRT": "Usage: /listcrt [species] (or look at a creature to list only its templates)",
+    "TemplateList": "Your templates ({0}): {1}",
+    "TemplateListSpecies": "Your {0} templates ({1}): {2}",
+    "TemplateListFiltered": "Templates matching '{0}' ({1}): {2}",
+    "TemplateListMore": "...and {0} more. Add a species filter or look at a creature to narrow the list.",
+    "ListPage": "({0}/{1})",
+    "NoTemplates": "You don't have any saved templates.",
+    "NoTemplatesSpecies": "You don't have any {0} templates.",
+    "NoTemplatesMatch": "No templates match '{0}'.",
+    "TemplateDeleted": "Template '{0}' deleted."
   }
 }

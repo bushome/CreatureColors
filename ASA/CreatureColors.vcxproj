@@ -9,6 +9,8 @@
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\Database.cpp" />
+    <ClCompile Include="src\MysqlBackend.cpp" />
+    <ClCompile Include="src\SqliteBackend.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h" />
@@ -19,6 +21,7 @@
   <ItemGroup>
     <None Include="vcpkg.json" />
     <None Include="configs\config.json" />
+    <None Include="configs\config.commented.json" />
     <None Include="configs\PluginInfo.json" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -69,13 +72,22 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>$(SolutionDir)extern\AsaApi\out_lib\AsaApi.lib;$(SolutionDir)lib\Permissions.lib;ws2_32.lib;shlwapi.lib;secur32.lib;crypt32.lib;bcrypt.lib;advapi32.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- Permissions.dll lives in its own plugin folder and may load after this plugin; resolve it on first use instead of at load time. -->
+      <DelayLoadDLLs>Permissions.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>$(SolutionDir)extern\AsaApi\out_lib\AsaApi.lib;$(SolutionDir)lib\Permissions.lib;delayimp.lib;ws2_32.lib;shlwapi.lib;secur32.lib;crypt32.lib;bcrypt.lib;advapi32.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>if exist "$(TargetDir)$(TargetFileName).arkapi" del /q "$(TargetDir)$(TargetFileName).arkapi"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>copy /y "$(TargetDir)$(TargetFileName)" "$(TargetDir)$(TargetFileName).arkapi"</Command>
+      <Command>copy /y "$(TargetDir)$(TargetFileName)" "$(TargetDir)$(TargetFileName).arkapi"
+if not exist "$(TargetDir)CreatureColors" mkdir "$(TargetDir)CreatureColors"
+copy /y "$(TargetDir)$(TargetFileName)" "$(TargetDir)CreatureColors\"
+copy /y "$(TargetDir)$(TargetName).pdb" "$(TargetDir)CreatureColors\"
+copy /y "$(ProjectDir)configs\PluginInfo.json" "$(TargetDir)CreatureColors\"
+copy /y "$(ProjectDir)configs\config.json" "$(TargetDir)CreatureColors\"
+copy /y "$(ProjectDir)configs\config.commented.json" "$(TargetDir)CreatureColors\"</Command>
+      <Message>Assembling out\CreatureColors\ plugin folder</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

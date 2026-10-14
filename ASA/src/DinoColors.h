@@ -17,6 +17,26 @@ namespace DinoColors
     // Tamed creatures sit on teams >= 50000; wild ones are below that.
     constexpr int kFirstPlayerTeam = 50000;
 
+    // True if the actor is a creature. Walks the class hierarchy using only core reflection fields
+    // (UObjectBase.ClassPrivate, UStruct.SuperStruct) instead of UPrimalActor::IsPrimalDino(), whose
+    // offset is not in every AsaApi cache.
+    inline bool IsDino(AActor* actor)
+    {
+        if (!actor)
+            return false;
+
+        static UClass* dino_class = APrimalDinoCharacter::GetPrivateStaticClass();
+        if (!dino_class)
+            return false;
+
+        for (UStruct* cls = actor->ClassPrivateField(); cls; cls = cls->SuperStructField())
+        {
+            if (cls == dino_class)
+                return true;
+        }
+        return false;
+    }
+
     // The creature the player is looking at, if it is a creature at all.
     inline APrimalDinoCharacter* GetAimedDino(AShooterPlayerController* pc)
     {
@@ -29,7 +49,7 @@ namespace DinoColors
 
         AActor* actor = character->GetAimedActor(ECollisionChannel::ECC_GameTraceChannel2, nullptr, 0.0f, 0.0f,
                                                  nullptr, nullptr, false, false, false, nullptr);
-        if (!actor || !actor->IsPrimalDino())
+        if (!IsDino(actor))
             return nullptr;
 
         return static_cast<APrimalDinoCharacter*>(actor);
@@ -46,27 +66,18 @@ namespace DinoColors
         return dino_team >= kFirstPlayerTeam && dino_team == pc->TargetingTeamField();
     }
 
-    // In ASA, PreventColorizationRegions lives in the class's sparse data. A non-zero entry means
-    // the species doesn't use that region.
+    // A region counts as used when the game allows colorizing it AND it currently holds a color.
+    // ASA has no flag for regions a species' model doesn't paint (e.g. Raptor region 2): those are
+    // simply never given a color at spawn and sit at 0 ("unset"), which is also what the inspect
+    // panel shows as a blank swatch. So a region at 0 is treated as unused: /setcr refuses it,
+    // /savecrt stores 255 for it, and applying a template leaves it alone.
     inline bool IsRegionUsed(APrimalDinoCharacter* dino, int region)
     {
         if (!dino || region < 0 || region >= kRegionCount)
             return false;
-
-        const unsigned char* prevent = nullptr;
-
-        if (UClass* cls = dino->ClassPrivateField())
-        {
-            const void* sparse = cls->GetSparseClassData(EGetSparseClassDataMethod::ArchetypeIfNull);
-            if (sparse)
-                prevent = GetNativePointerField<const unsigned char*>(
-                    sparse, "FPrimalDinoCharacterSparseClassData.PreventColorizationRegions");
-        }
-
-        if (!prevent)
-            prevent = dino->PreventColorizationRegionsField()();
-
-        return prevent && prevent[region] == 0;
+        if (dino->ColorSetIndicesField()()[region] == 0)
+            return false;
+        return dino->GetUsesColorizationRegion(region);
     }
 
     inline std::string GetSpecies(APrimalDinoCharacter* dino)
@@ -99,7 +110,9 @@ namespace DinoColors
         for (int r = 0; r < kRegionCount; ++r)
         {
             const uint8_t color = tpl.regions[r];
-            if (color == kUnusedRegion || !IsRegionUsed(dino, r))
+            // 255 = unused on the source creature; 0 = "unset" (never written, it can make the game
+            // re-roll colors); and regions this creature doesn't use are left alone.
+            if (color == kUnusedRegion || color == 0 || !IsRegionUsed(dino, r))
                 continue;
             SetRegion(dino, r, color);
         }

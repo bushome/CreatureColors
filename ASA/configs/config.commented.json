@@ -1,0 +1,136 @@
+{
+  // ---------------------------------------------------------------------------
+  // CreatureColors (ASA) configuration - annotated reference copy.
+  // The plugin reads config.json (same settings, no comments). This file only explains
+  // each setting; edit config.json to change anything.
+  // Changes take effect after the plugin is reloaded or the server restarts.
+  // ---------------------------------------------------------------------------
+
+  // Where templates are stored.
+  //   true  = MariaDB/MySQL server using the "Mysql" settings below
+  //   false = local SQLite file using the "SQLite" settings below (no database server needed)
+  // Either way the plugin creates its own table on load, and a connection is only opened
+  // when a template is saved or loaded, then closed again.
+  "UseMysql": true,
+
+  // Used when UseMysql is false. Relative paths are inside the plugin folder
+  // (ArkApi\Plugins\CreatureColors\); the folder is created if it doesn't exist.
+  // Each server keeps its own file, so templates aren't shared across a cluster this way.
+  "SQLite": {
+    "File": "database/creaturecolors.db"
+  },
+
+  // Used when UseMysql is true. Create the database yourself and grant the user access.
+  "Mysql": {
+    "Host": "127.0.0.1",
+    "Port": 3306,
+    "User": "ark",
+    "Password": "",
+    "Database": "creaturecolors",
+    // Letters, numbers and underscores only. Also used as the table name in SQLite.
+    "TableName": "creaturecolors_templates"
+  },
+
+  // Permissions-plugin permission required for every command. Checked against the
+  // player's own groups only (tribe groups don't count), so coloring stays an
+  // individual perk. Holders can color any tame owned by them or their tribe.
+  // Use a single name, or a list where having any one of them is enough:
+  //   "Permission": ["Patrons", "VIP", "Admins"]
+  "Permission": "Patrons",
+
+  // Chat command names. Include the leading slash.
+  "Commands": {
+    "SetColorRegion": "/setcr",       // /setcr <region 0-5> <color id>
+    "SaveTemplate": "/savecrt",       // /savecrt <name>
+    "ApplyTemplateAOE": "/setcrtaoe", // /setcrtaoe <name> [radius]
+    // Answers to the overwrite prompt. These are commands so the answer never shows in chat.
+    // Change them if another plugin already uses /y or /n.
+    "ConfirmYes": "/y",
+    "ConfirmNo": "/n",
+    "ListTemplates": "/listcrt",      // /listcrt [species]
+    "DeleteTemplate": "/delcrt"       // /delcrt <name>
+  },
+
+  // /setcrtaoe radius in Unreal units (1 foundation = 300).
+  // DefaultRadius is used when no radius is given. A larger request runs at MaxRadius
+  // and the player is told with the RadiusCapped message. A radius that isn't a
+  // whole number above 0 shows the UsageAOE message instead of running.
+  "AOE": {
+    "DefaultRadius": 300,
+    "MaxRadius": 3000
+  },
+
+  // Seconds a player has to answer /y or /n when /savecrt would overwrite an existing template.
+  // After that the save is cancelled. Minimum 5.
+  "OverwritePromptTimeoutSeconds": 30,
+
+  // Maximum template name length, 1-32 (the database column holds 32).
+  "TemplateNameMaxLength": 32,
+
+  // /listcrt output. Looking at a creature lists only templates for that exact species
+  // (Aberrant and other variants count as separate species). /listcrt rex lists species whose
+  // short name contains "rex" (Rex, Rex_Aberrant, ...). Otherwise everything, grouped by species:
+  //   Your templates (9): Raptor: blue, red | Rex: fire, ice
+  // The short name is the blueprint class with _Character_BP removed, so a few differ from the
+  // in-game name: Quetz (Quetzal), Argent (Argentavis), Gigant (Giganotosaurus).
+  // Names are packed into chat messages of up to LineChars characters (100-500); the first
+  // message's header counts toward its limit. Messages are numbered (1/3), (2/3)... when there is
+  // more than one. At most MaxLines messages (1-20) are sent; the rest are summarized by TemplateListMore.
+  "List": {
+    "LineChars": 180,
+    "MaxLines": 5
+  },
+
+  // Player-facing messages. {0}, {1}, {2} are filled in by the plugin as noted.
+  // Any message left out of this list falls back to the built-in default text.
+  "Messages": {
+    "NoPermission": "You don't have permission to color creatures.",
+    "NoTarget": "Look at one of your tames first.",
+    "NotYourTame": "That creature isn't owned by you or your tribe.",
+    "InvalidRegion": "Region must be 0-5 and used by this species.",
+    "InvalidColor": "That color ID isn't valid.",
+    // {0} = region, {1} = color id
+    "RegionSet": "Region {0} set to color {1}.",
+    // {0} = template name (same for the messages below unless noted)
+    "TemplateSaved": "Template '{0}' saved.",
+    "TemplateOverwritten": "Template '{0}' overwritten.",
+    // {0} = template name, {1} = ConfirmYes command, {2} = ConfirmNo command
+    "TemplateExists": "Template '{0}' already exists, do you wish to overwrite? {1} or {2}",
+    "OverwriteCancelled": "Save of template '{0}' cancelled.",
+    "OverwriteExpired": "No answer received, save of template '{0}' cancelled.",
+    // Shown when /y or /n is used with no overwrite prompt open
+    "NothingToConfirm": "There's no template overwrite waiting for an answer.",
+    "TemplateNotFound": "No template named '{0}'.",
+    // {0} = TemplateNameMaxLength
+    "InvalidTemplateName": "Template names can be 1-{0} characters: letters, numbers, - and _.",
+    // {0} = requested radius, {1} = AOE.MaxRadius. Shown just before AOEResult.
+    "RadiusCapped": "Radius {0} is above the limit, using {1} instead.",
+    // {0} = template name, {1} = creatures colored, {2} = your creatures skipped for being a different species
+    "AOEResult": "Applied '{0}' to {1} creature(s), skipped {2} of a different species.",
+    "DatabaseError": "Couldn't reach the template database. Try again later.",
+    "UsageSetCR": "Usage: /setcr <region 0-5> <color id>",
+    "UsageSaveCRT": "Usage: /savecrt <name>",
+    // {0} = AOE.MaxRadius
+    "UsageAOE": "Usage: /setcrtaoe <name> [radius up to {0}]",
+    "UsageDelCRT": "Usage: /delcrt <name>",
+    "UsageListCRT": "Usage: /listcrt [species] (or look at a creature to list only its templates)",
+    // Header of the first /listcrt message; the last placeholder is that message's names.
+    // {0} = how many, {1} = names grouped by species
+    "TemplateList": "Your templates ({0}): {1}",
+    // Looking at a creature. {0} = species short name, {1} = how many, {2} = names
+    "TemplateListSpecies": "Your {0} templates ({1}): {2}",
+    // /listcrt <text>. {0} = the text typed, {1} = how many, {2} = names grouped by species
+    "TemplateListFiltered": "Templates matching '{0}' ({1}): {2}",
+    // After List.MaxLines messages. {0} = names not shown
+    "TemplateListMore": "...and {0} more. Add a species filter or look at a creature to narrow the list.",
+    // Added to the end of each /listcrt message when there is more than one. {0} = this one, {1} = total
+    "ListPage": "({0}/{1})",
+    "NoTemplates": "You don't have any saved templates.",
+    // {0} = species short name of the creature being looked at
+    "NoTemplatesSpecies": "You don't have any {0} templates.",
+    // {0} = the text typed
+    "NoTemplatesMatch": "No templates match '{0}'.",
+    // {0} = template name. Deleting a name that doesn't exist uses TemplateNotFound.
+    "TemplateDeleted": "Template '{0}' deleted."
+  }
+}
