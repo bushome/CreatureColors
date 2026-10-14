@@ -8,6 +8,7 @@
 //   /delcrt <name>                 delete one of your templates
 
 #include <algorithm>
+#include <bit> // ArkServerApi's UE.h uses std::bit_cast without including <bit>
 #include <cctype>
 #include <charconv>
 #include <chrono>
@@ -43,9 +44,9 @@ namespace
     // Keyed by SteamID. One open overwrite prompt per player.
     std::unordered_map<uint64_t, PendingOverwrite> g_pending;
 
-    const FLinearColor kOk{0.4f, 1.0f, 0.4f, 1.0f};
-    const FLinearColor kInfo{1.0f, 0.85f, 0.3f, 1.0f};
-    const FLinearColor kError{1.0f, 0.4f, 0.4f, 1.0f};
+    const FLinearColor kOk{ 0.4f, 1.0f, 0.4f, 1.0f };
+    const FLinearColor kInfo{ 1.0f, 0.85f, 0.3f, 1.0f };
+    const FLinearColor kError{ 1.0f, 0.4f, 0.4f, 1.0f };
 
     const FString kTickCallbackId("CreatureColors.Tick");
 
@@ -72,7 +73,7 @@ namespace
     }
 
     void Send(AShooterPlayerController* pc, const FLinearColor& color, const std::string& key,
-              const std::vector<std::string>& args = {})
+        const std::vector<std::string>& args = {})
     {
         if (!pc)
             return;
@@ -143,9 +144,9 @@ namespace
     bool SameName(const std::string& a, const std::string& b)
     {
         return a.size() == b.size() &&
-               std::equal(a.begin(), a.end(), b.begin(), [](unsigned char x, unsigned char y) {
-                   return std::tolower(x) == std::tolower(y);
-               });
+            std::equal(a.begin(), a.end(), b.begin(), [](unsigned char x, unsigned char y) {
+            return std::tolower(x) == std::tolower(y);
+                });
     }
 
     bool IsValidTemplateName(const std::string& name)
@@ -154,7 +155,7 @@ namespace
             return false;
         return std::all_of(name.begin(), name.end(), [](unsigned char c) {
             return std::isalnum(c) || c == '_' || c == '-';
-        });
+            });
     }
 
     // Shared checks for commands that act on the aimed creature. Returns the creature or nullptr
@@ -210,7 +211,7 @@ namespace
         }
 
         DinoColors::SetRegion(dino, region, static_cast<uint8_t>(color));
-        Send(pc, kOk, "RegionSet", {std::to_string(region), std::to_string(color)});
+        Send(pc, kOk, "RegionSet", { std::to_string(region), std::to_string(color) });
     }
 
     // ---------- /savecrt <name> ----------
@@ -233,7 +234,7 @@ namespace
         const std::string name = args[1];
         if (!IsValidTemplateName(name))
         {
-            Send(pc, kError, "InvalidTemplateName", {std::to_string(g_config.template_name_max_length)});
+            Send(pc, kError, "InvalidTemplateName", { std::to_string(g_config.template_name_max_length) });
             return;
         }
 
@@ -257,21 +258,21 @@ namespace
             switch (result)
             {
             case InsertResult::Inserted:
-                Send(player, kOk, "TemplateSaved", {name});
+                Send(player, kOk, "TemplateSaved", { name });
                 break;
             case InsertResult::AlreadyExists:
                 if (!player)
                     return;
                 g_pending[steam_id] = PendingOverwrite{
-                    name, tpl, Clock::now() + std::chrono::seconds(g_config.prompt_timeout_seconds)};
-                Send(player, kInfo, "TemplateExists", {name, g_config.cmd_confirm_yes, g_config.cmd_confirm_no});
+                    name, tpl, Clock::now() + std::chrono::seconds(g_config.prompt_timeout_seconds) };
+                Send(player, kInfo, "TemplateExists", { name, g_config.cmd_confirm_yes, g_config.cmd_confirm_no });
                 break;
             case InsertResult::Error:
                 Log::GetLog()->error("CreatureColors: save failed: {}", error);
                 Send(player, kError, "DatabaseError");
                 break;
             }
-        });
+            });
     }
 
     // ---------- /y and /n answers to an overwrite prompt ----------
@@ -296,7 +297,7 @@ namespace
 
         if (!yes)
         {
-            Send(pc, kInfo, "OverwriteCancelled", {pending.name});
+            Send(pc, kInfo, "OverwriteCancelled", { pending.name });
             return;
         }
 
@@ -304,14 +305,14 @@ namespace
             AShooterPlayerController* player = FindPlayer(steam_id);
             if (ok)
             {
-                Send(player, kOk, "TemplateOverwritten", {name});
+                Send(player, kOk, "TemplateOverwritten", { name });
             }
             else
             {
                 Log::GetLog()->error("CreatureColors: overwrite failed: {}", error);
                 Send(player, kError, "DatabaseError");
             }
-        });
+            });
     }
 
     void CmdConfirmYes(AShooterPlayerController* pc, FString*, EChatSendMode::Type) { AnswerOverwrite(pc, true); }
@@ -331,14 +332,14 @@ namespace
         const std::string max_str = std::to_string(static_cast<int>(g_config.aoe_max_radius));
         if (args.size() < 2 || args.size() > 3)
         {
-            Send(pc, kInfo, "UsageAOE", {max_str});
+            Send(pc, kInfo, "UsageAOE", { max_str });
             return;
         }
 
         const std::string name = args[1];
         if (!IsValidTemplateName(name))
         {
-            Send(pc, kError, "InvalidTemplateName", {std::to_string(g_config.template_name_max_length)});
+            Send(pc, kError, "InvalidTemplateName", { std::to_string(g_config.template_name_max_length) });
             return;
         }
 
@@ -350,7 +351,7 @@ namespace
         {
             if (!ParseInt(args[2], requested) || requested <= 0)
             {
-                Send(pc, kInfo, "UsageAOE", {max_str});
+                Send(pc, kInfo, "UsageAOE", { max_str });
                 return;
             }
             radius = static_cast<float>(requested);
@@ -375,7 +376,7 @@ namespace
             }
             if (!tpl)
             {
-                Send(player, kError, "TemplateNotFound", {name});
+                Send(player, kError, "TemplateNotFound", { name });
                 return;
             }
 
@@ -408,9 +409,9 @@ namespace
             }
 
             if (capped)
-                Send(player, kInfo, "RadiusCapped", {std::to_string(requested), max_str});
-            Send(player, kOk, "AOEResult", {name, std::to_string(applied), std::to_string(skipped)});
-        });
+                Send(player, kInfo, "RadiusCapped", { std::to_string(requested), max_str });
+            Send(player, kOk, "AOEResult", { name, std::to_string(applied), std::to_string(skipped) });
+            });
     }
 
     // ---------- /listcrt [species] ----------
@@ -486,7 +487,7 @@ namespace
             return false;
         return std::all_of(filter.begin(), filter.end(), [](unsigned char c) {
             return std::isalnum(c) || c == '_' || c == '-';
-        });
+            });
     }
 
     struct ListLine
@@ -499,7 +500,7 @@ namespace
     // budget, then start a new line. A line always takes at least one name, so a long name can't stall it.
     // With show_species, each line restates the species it starts in ("Rex: a, b | Raptor: c").
     std::vector<ListLine> PackList(const std::vector<std::pair<std::string, std::string>>& items, // (label, name)
-                                   bool show_species, size_t first_budget, size_t budget)
+        bool show_species, size_t first_budget, size_t budget)
     {
         std::vector<ListLine> lines(1);
         std::string line_species;
@@ -515,7 +516,7 @@ namespace
                 if (!line_empty && label == line_species)
                     return ", " + name;
                 return (line_empty ? std::string() : std::string(" | ")) + label + ": " + name;
-            };
+                };
 
             std::string piece = piece_for(cur.text.empty());
             if (!cur.text.empty() && cur.text.size() + piece.size() > limit)
@@ -532,7 +533,7 @@ namespace
     }
 
     void SendList(AShooterPlayerController* player, const std::vector<TemplateEntry>& entries,
-                  const std::string& aimed_species, const std::string& filter)
+        const std::string& aimed_species, const std::string& filter)
     {
         // Pick the rows to show.
         std::vector<std::pair<std::string, std::string>> items; // (label, name)
@@ -552,9 +553,9 @@ namespace
         if (items.empty())
         {
             if (!aimed_species.empty())
-                Send(player, kInfo, "NoTemplatesSpecies", {SpeciesLabel(aimed_species)});
+                Send(player, kInfo, "NoTemplatesSpecies", { SpeciesLabel(aimed_species) });
             else if (!filter.empty())
-                Send(player, kInfo, "NoTemplatesMatch", {filter});
+                Send(player, kInfo, "NoTemplatesMatch", { filter });
             else
                 Send(player, kInfo, "NoTemplates");
             return;
@@ -571,7 +572,7 @@ namespace
             if (species_of[a] != species_of[b])
                 return species_of[a] < species_of[b];
             return NaturalLess(items[a].second, items[b].second);
-        });
+            });
         std::vector<std::pair<std::string, std::string>> sorted;
         sorted.reserve(items.size());
         for (size_t i : order)
@@ -584,24 +585,24 @@ namespace
         if (!aimed_species.empty())
         {
             header_key = "TemplateListSpecies";
-            header_args = {SpeciesLabel(aimed_species), count};
+            header_args = { SpeciesLabel(aimed_species), count };
         }
         else if (!filter.empty())
         {
             header_key = "TemplateListFiltered";
-            header_args = {filter, count};
+            header_args = { filter, count };
         }
         else
         {
             header_key = "TemplateList";
-            header_args = {count};
+            header_args = { count };
         }
 
         auto with_body = [&](const std::string& body) {
             auto args = header_args;
             args.push_back(body);
             return Format(g_config.Msg(header_key), args);
-        };
+            };
 
         const size_t budget = g_config.list_line_chars;
         const size_t header_len = with_body("").size();
@@ -624,12 +625,12 @@ namespace
         {
             std::string text = i == 0 ? with_body(lines[i].text) : lines[i].text;
             if (lines.size() > 1)
-                text += " " + Format(g_config.Msg("ListPage"), {std::to_string(i + 1), total});
+                text += " " + Format(g_config.Msg("ListPage"), { std::to_string(i + 1), total });
             SendText(player, kInfo, text);
         }
 
         if (hidden > 0)
-            Send(player, kInfo, "TemplateListMore", {std::to_string(hidden)});
+            Send(player, kInfo, "TemplateListMore", { std::to_string(hidden) });
     }
 
     void CmdListTemplates(AShooterPlayerController* pc, FString* message, EChatSendMode::Type)
@@ -669,7 +670,7 @@ namespace
                 return;
             }
             SendList(player, entries, aimed_species, filter);
-        });
+            });
     }
 
     // ---------- /delcrt <name> ----------
@@ -692,7 +693,7 @@ namespace
         const std::string name = args[1];
         if (!IsValidTemplateName(name))
         {
-            Send(pc, kError, "InvalidTemplateName", {std::to_string(g_config.template_name_max_length)});
+            Send(pc, kError, "InvalidTemplateName", { std::to_string(g_config.template_name_max_length) });
             return;
         }
 
@@ -711,10 +712,10 @@ namespace
                 return;
             }
             if (deleted)
-                Send(player, kOk, "TemplateDeleted", {name});
+                Send(player, kOk, "TemplateDeleted", { name });
             else
-                Send(player, kError, "TemplateNotFound", {name});
-        });
+                Send(player, kError, "TemplateNotFound", { name });
+            });
     }
 
     // ---------- tick: deliver DB results, expire prompts ----------
@@ -731,7 +732,7 @@ namespace
         {
             if (now >= it->second.expires)
             {
-                Send(FindPlayer(it->first), kInfo, "OverwriteExpired", {it->second.name});
+                Send(FindPlayer(it->first), kInfo, "OverwriteExpired", { it->second.name });
                 it = g_pending.erase(it);
             }
             else
@@ -787,7 +788,7 @@ extern "C" __declspec(dllexport) void Plugin_Init()
             Log::GetLog()->info("CreatureColors: table `{}` ready in {}.", g_config.table, where);
         else
             Log::GetLog()->error("CreatureColors: couldn't create table `{}` in {}: {}", g_config.table, where, err);
-    });
+        });
 
     auto& commands = ArkApi::GetCommands();
     commands.AddChatCommand(FString(g_config.cmd_set_region), &CmdSetRegion);
