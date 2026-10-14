@@ -57,13 +57,18 @@ namespace DinoColors
         return reinterpret_cast<unsigned char*>(dino->ColorSetIndicesField()());
     }
 
-    // ASE marks regions a species doesn't paint in PreventColorizationRegions (the inspect panel shows
-    // those as blank). /setcr refuses them, /savecrt stores 255 for them, applying leaves them alone.
+    // A region counts as used when the game allows colorizing it AND it currently holds a color.
+    // PreventColorizationRegions covers some species, but most leave regions they don't paint unflagged:
+    // those are never given a color at spawn and sit at 0 (verified on ASE: untouched Raptor region 2 = 0,
+    // same as ASA). So a region at 0 is treated as unused too: /setcr refuses it, /savecrt stores 255 for
+    // it, and applying a template leaves it alone.
     inline bool IsRegionUsed(APrimalDinoCharacter* dino, int region)
     {
         if (!dino || region < 0 || region >= kRegionCount)
             return false;
-        return dino->PreventColorizationRegionsField()()[region] == 0;
+        if (dino->PreventColorizationRegionsField()()[region] != 0)
+            return false;
+        return Colors(dino)[region] != 0;
     }
 
     inline std::string GetSpecies(APrimalDinoCharacter* dino)
