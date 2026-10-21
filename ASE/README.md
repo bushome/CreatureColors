@@ -10,7 +10,7 @@ ArkServerApi (3.56) plugin that lets players with one Permissions-plugin permiss
 | `/listcrt [species]` | Lists your templates. Looking at a creature shows only that species' templates; `/listcrt rex` shows species whose short name contains "rex"; otherwise everything, grouped by species. Long lists are split across numbered chat messages (`List` in config). |
 | `/delcrt <name>` | Deletes one of your templates. |
 
-Valid color IDs are 1-100 and 201-226. Color 227, which some mutated creatures carry, is kept when a template is saved and applied, but can't be set with `/setcr`. Regions a species doesn't use (the game's PreventColorizationRegions, shown as blank in the inspect panel) are stored as 255 and skipped when applying; a template never writes 0.
+Valid color IDs are 1-100 and 201-226. Color 227, which some mutated creatures carry, is kept when a template is saved and applied, but can't be set with `/setcr`. Regions a species doesn't use (flagged by the game, or still at 0 because the species never paints them) are stored as 255 and skipped when applying; a template never writes 0.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ Grant the permission named in `Permission` (set to `Patrons`) to the group(s) th
 ## Things to verify on a test server first
 
 - **Aim targeting** (`GetAimedActor` with `ECC_GameTraceChannel2`): `/setcr` should pick up the creature under your crosshair at normal interaction range.
-- **Unused regions**: `/setcr` on a region the species doesn't paint should be refused (e.g. a Raptor region with a blank swatch in the inspect panel).
+- **Unused regions**: `/setcr 2 <color>` on an untouched Raptor should be refused (its region 2 holds 0).
 - **Dye colors**: `/setcr 0 210` should apply (IDs above 127 are read and written unsigned).
 - **Color sync**: other players see the change without relogging, and it survives a cryopod round trip.
 - **Permission filter**: a player in `Patrons` personally can use the commands; a tribemate who isn't can't, even if the tribe were added to a group.

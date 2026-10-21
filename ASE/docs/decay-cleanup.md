@@ -1,4 +1,4 @@
-# Purging templates for decayed players (MariaDB, optional)
+# Purging templates for decayed players (ASE, MariaDB, optional)
 
 CreatureColors keeps a player's templates forever. If you run a decay plugin (Lethal Decay or similar)
 that removes a player's record when they decay, you can have MariaDB delete that player's templates at
@@ -7,85 +7,78 @@ the same moment. Nothing in the plugin changes; this is done entirely in the dat
 This only applies with `"UseMysql": true`. With SQLite each server has its own local file, and a database
 trigger can't reach across to it.
 
-## Lethal Decay (ASA) - ready to use
+## Lethal Decay (ASE) - ready to use
 
-Lethal Decay keeps one row per player **per server** in `decayasa.lethaldecay_tribes` (columns `serverid`,
-`EOS_ID`, `tribeid`, ..., `decayedlastlogin`), plus tribe-level rows where `EOS_ID` is `'0'`. When a player
-decays, their row is kept and `decayedlastlogin` is set to **-2**.
+Lethal Decay keeps one row per player **per server** in `decayarkse.lethaldecay_tribes` (columns `serverid`,
+`steamid` BIGINT UNSIGNED, `tribeid`, `tribename`, `decayday`, `rapiddecayday`, `lastlogin`, `decayedlastlogin`),
+plus tribe-level rows where `steamid` is `0`. When a player decays, their row is kept and **`decayday` is set to -2**
+(`rapiddecayday` too). Unlike the ASA version, `decayedlastlogin` is a timestamp here, not the marker.
+Checked on the live data (2026-10-14): 569 player rows (`steamid <> 0`) carry `decayday = -2`, so player rows are
+marked, not only the tribe row.
 
-CreatureColors templates are cluster-wide, so the trigger only purges a player's templates once **every** row
-they have, on every server, is decayed. Decaying on one map while still active on another leaves their
-templates alone.
+CreatureColors templates are shared by every server using the same database, so the trigger only purges a player's
+templates once **every** row they have, on every server, is decayed.
 
 ```sql
 DELIMITER $$
 
-CREATE TRIGGER `decayasa`.`creaturecolors_purge_on_decay`
-AFTER UPDATE ON `decayasa`.`lethaldecay_tribes`
+CREATE TRIGGER `decayarkse`.`creaturecolors_purge_on_decay`
+AFTER UPDATE ON `decayarkse`.`lethaldecay_tribes`
 FOR EACH ROW
 BEGIN
-    IF NEW.`decayedlastlogin` = -2
-       AND NOT (OLD.`decayedlastlogin` <=> -2)
-       AND NEW.`EOS_ID` NOT IN ('0', '')
-       AND NOT EXISTS (SELECT 1 FROM `decayasa`.`lethaldecay_tribes`
-                       WHERE `EOS_ID` = NEW.`EOS_ID`
-                         AND NOT (`decayedlastlogin` <=> -2)) THEN
+    IF NEW.`decayday` = -2
+       AND NOT (OLD.`decayday` <=> -2)
+       AND NEW.`steamid` <> 0
+       AND NOT EXISTS (SELECT 1 FROM `decayarkse`.`lethaldecay_tribes`
+                       WHERE `steamid` = NEW.`steamid`
+                         AND NOT (`decayday` <=> -2)) THEN
         DELETE FROM `creaturecolors`.`creaturecolors_templates`
-        WHERE `eos_id` = NEW.`EOS_ID`;
+        WHERE `steam_id` = NEW.`steamid`;
     END IF;
 END$$
 
 DELIMITER ;
 ```
 
-It fires only on the change **to** -2, so re-saving an already decayed row does nothing. This table already
-has other triggers; MariaDB runs several `AFTER UPDATE` triggers on the same table side by side, so it
-doesn't interfere with them.
+It fires only on the change **to** -2, so re-saving an already decayed row does nothing.
 
-**Check before relying on it:** look at a tribe you know has decayed and confirm its **player** rows (real
-EOS IDs) show -2, not just the tribe row with `EOS_ID` = `'0'`. If only the `'0'` row gets -2, tell me and the
-trigger needs to work from the tribe ID instead.
-
-If Lethal Decay also deletes rows later (for example on cleanup), add this companion trigger so a deleted
-last row purges too:
+If Lethal Decay also deletes rows later (for example on cleanup), add this companion so a deleted last row purges too:
 
 ```sql
 DELIMITER $$
 
-CREATE TRIGGER `decayasa`.`creaturecolors_purge_on_delete`
-AFTER DELETE ON `decayasa`.`lethaldecay_tribes`
+CREATE TRIGGER `decayarkse`.`creaturecolors_purge_on_delete`
+AFTER DELETE ON `decayarkse`.`lethaldecay_tribes`
 FOR EACH ROW
 BEGIN
-    IF OLD.`EOS_ID` NOT IN ('0', '')
-       AND NOT EXISTS (SELECT 1 FROM `decayasa`.`lethaldecay_tribes`
-                       WHERE `EOS_ID` = OLD.`EOS_ID`
-                         AND NOT (`decayedlastlogin` <=> -2)) THEN
+    IF OLD.`steamid` <> 0
+       AND NOT EXISTS (SELECT 1 FROM `decayarkse`.`lethaldecay_tribes`
+                       WHERE `steamid` = OLD.`steamid`
+                         AND NOT (`decayday` <=> -2)) THEN
         DELETE FROM `creaturecolors`.`creaturecolors_templates`
-        WHERE `eos_id` = OLD.`EOS_ID`;
+        WHERE `steam_id` = OLD.`steamid`;
     END IF;
 END$$
 
 DELIMITER ;
 ```
 
-Catch-up for players who decayed before the trigger existed: removes templates whose owner has no
-non-decayed row left. Preview first by swapping `DELETE t` for `SELECT t.*`.
+Catch-up for players who decayed before the trigger existed (preview first by swapping `DELETE t` for `SELECT t.*`):
 
 ```sql
 DELETE t FROM `creaturecolors`.`creaturecolors_templates` t
-WHERE EXISTS (SELECT 1 FROM `decayasa`.`lethaldecay_tribes` p WHERE p.`EOS_ID` = t.`eos_id`)
-  AND NOT EXISTS (SELECT 1 FROM `decayasa`.`lethaldecay_tribes` p
-                  WHERE p.`EOS_ID` = t.`eos_id` AND NOT (p.`decayedlastlogin` <=> -2));
+WHERE EXISTS (SELECT 1 FROM `decayarkse`.`lethaldecay_tribes` p WHERE p.`steamid` = t.`steam_id`)
+  AND NOT EXISTS (SELECT 1 FROM `decayarkse`.`lethaldecay_tribes` p
+                  WHERE p.`steamid` = t.`steam_id` AND NOT (p.`decayday` <=> -2));
 ```
 
-The first `EXISTS` keeps templates of players Lethal Decay has no record of at all, so a gap in its table
-can't wipe anyone by accident.
+The first `EXISTS` keeps templates of players Lethal Decay has no record of, so a gap in its table can't wipe anyone.
 
 To remove them later:
 
 ```sql
-DROP TRIGGER `decayasa`.`creaturecolors_purge_on_decay`;
-DROP TRIGGER `decayasa`.`creaturecolors_purge_on_delete`;
+DROP TRIGGER `decayarkse`.`creaturecolors_purge_on_decay`;
+DROP TRIGGER `decayarkse`.`creaturecolors_purge_on_delete`;
 ```
 
 The rest of this file is the generic version for other decay plugins.
@@ -95,10 +88,10 @@ The rest of this file is the generic version for other decay plugins.
 You need two names from the decay plugin's database:
 
 - the **table** that has one row per player (or per tribe member) and is deleted from when a player decays
-- the **column** in it that holds the player's **EOS ID** (32 hex characters, same value as `eos_id` in
-  `creaturecolors_templates`)
+- the **column** in it that holds the player's **SteamID** (17 digits starting with 7656119, same value as
+  `steam_id` in `creaturecolors_templates`)
 
-In HeidiSQL, open the decay database and look for a table with an EOS ID column, or run:
+In HeidiSQL, open the decay database and look for a table with a SteamID column, or run:
 
 ```sql
 SHOW CREATE TABLE <decay_db>.<table>;
@@ -111,7 +104,7 @@ Also check **how** a player is removed:
 
 ## 2. Trigger: row deleted when a player decays
 
-Replace `<decay_db>`, `<players_table>` and `<eos_column>`. The `creaturecolors` database and table names
+Replace `<decay_db>`, `<players_table>` and `<steamid_column>`. The `creaturecolors` database and table names
 match the default config; change them if you renamed either.
 
 ```sql
@@ -122,7 +115,7 @@ AFTER DELETE ON `<decay_db>`.`<players_table>`
 FOR EACH ROW
 BEGIN
     DELETE FROM `creaturecolors`.`creaturecolors_templates`
-    WHERE `eos_id` = OLD.`<eos_column>`;
+    WHERE `steam_id` = OLD.`<steamid_column>`;
 END$$
 
 DELIMITER ;
@@ -140,7 +133,7 @@ BEGIN
     -- adjust the condition to however the decay plugin marks a decayed player
     IF NEW.`<decayed_column>` = 1 AND OLD.`<decayed_column>` <> 1 THEN
         DELETE FROM `creaturecolors`.`creaturecolors_templates`
-        WHERE `eos_id` = NEW.`<eos_column>`;
+        WHERE `steam_id` = NEW.`<steamid_column>`;
     END IF;
 END$$
 
@@ -186,8 +179,8 @@ Templates saved before the trigger existed, by players who have since decayed, c
 
 ```sql
 DELETE t FROM `creaturecolors`.`creaturecolors_templates` t
-LEFT JOIN `<decay_db>`.`<players_table>` p ON p.`<eos_column>` = t.`eos_id`
-WHERE p.`<eos_column>` IS NULL;
+LEFT JOIN `<decay_db>`.`<players_table>` p ON p.`<steamid_column>` = t.`steam_id`
+WHERE p.`<steamid_column>` IS NULL;
 ```
 
 Only run this if the decay table really contains **every** active player. Otherwise it would delete
