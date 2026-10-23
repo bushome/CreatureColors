@@ -18,7 +18,7 @@ Server plugin that lets players recolor their own or their tribe's tames with ch
 creature's colors as a named template, and apply it to every tame of the same species around them.
 Access is an individual perk gated by a Permissions permission; templates are stored in MariaDB or SQLite.
 
-**Status:** both versions are tested and running in production.
+Status: complete. Both versions are tested and running in production. This software will receive only bug fixes for future game state version updates. No new feature sets will be added beyond what is presented here.
 
 | Folder | Game | Server API (submodule) | Player key |
 |---|---|---|---|
