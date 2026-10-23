@@ -26,7 +26,8 @@ Valid color IDs are 1-100 and 201-226. Color 227, which some mutated creatures c
 
 ## Install
 
-Each build assembles a ready-to-copy folder at `out\CreatureColors\` containing `CreatureColors.dll`, `CreatureColors.pdb`, `PluginInfo.json`, `config.json` and `config.commented.json`. Copy that folder to `ShooterGame\Binaries\Win64\ArkApi\Plugins\`, then fill in your MariaDB credentials in `config.json`. The plugin reads `config.json`, which has no comments; `config.commented.json` is an annotated copy that explains each setting.
+Each build assembles a ready-to-copy folder at `out\CreatureColors\` containing `CreatureColors.dll`, `CreatureColors.pdb`, `PluginInfo.json`, `config.json`, `config.commented.json`, `THIRD-PARTY-NOTICES.md` and `LICENSE-LGPL-2.1.txt`. Keep the notice file(s) with the DLL
+when redistributing the plugin. Copy that folder to `ShooterGame\Binaries\Win64\ArkApi\Plugins\`, then fill in your MariaDB credentials in `config.json`. The plugin reads `config.json`, which has no comments; `config.commented.json` is an annotated copy that explains each setting.
 
 Storage is chosen by `UseMysql`: `true` uses the MariaDB server in `Mysql` (create the database and grant the user access first); `false` uses a local SQLite file, `database\creaturecolors.db` inside the plugin folder by default, with nothing to set up. Either way the plugin creates its table on load.
 

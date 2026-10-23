@@ -86,7 +86,9 @@ copy /y "$(TargetDir)$(TargetFileName)" "$(TargetDir)CreatureColors\"
 copy /y "$(TargetDir)$(TargetName).pdb" "$(TargetDir)CreatureColors\"
 copy /y "$(ProjectDir)configs\PluginInfo.json" "$(TargetDir)CreatureColors\"
 copy /y "$(ProjectDir)configs\config.json" "$(TargetDir)CreatureColors\"
-copy /y "$(ProjectDir)configs\config.commented.json" "$(TargetDir)CreatureColors\"</Command>
+copy /y "$(ProjectDir)configs\config.commented.json" "$(TargetDir)CreatureColors\"
+copy /y "$(SolutionDir)..\THIRD-PARTY-NOTICES.md" "$(TargetDir)CreatureColors\"
+copy /y "$(SolutionDir)..\LICENSE-LGPL-2.1.txt" "$(TargetDir)CreatureColors\"</Command>
       <Message>Assembling out\CreatureColors\ plugin folder</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
