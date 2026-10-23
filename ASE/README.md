@@ -20,7 +20,8 @@ Valid color IDs are 1-100 and 201-226. Color 227, which some mutated creatures c
 ## Build
 
 1. Put the ArkServerApi source in `extern\AseApi`: `git clone https://github.com/ArkServerApi/AseApi.git extern/AseApi`. Its `out_lib\ArkApi.lib` is used as is; you don't build the API. (The `main` branch is 3.56 plus header-only additions.)
-2. `lib\Permissions.lib` (import library of the Permissions plugin that ships with ArkServerApi) is included.
+2. Nothing from Permissions is needed to build: `src\PermissionsApi.h` looks its functions up in the loaded `Permissions.dll`
+   at runtime.
 3. Make sure Visual Studio has vcpkg integrated (`vcpkg integrate install`). The manifest pulls `libmariadb` and `sqlite3` and links them statically. fmt isn't needed: ArkServerApi bundles its own.
 4. Open `CreatureColors.sln`, Release | x64, build. Output lands in `out\`.
 

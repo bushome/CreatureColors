@@ -36,21 +36,21 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## MariaDB Connector/C (libmariadb) 3.3.1
+## MariaDB Connector/C (libmariadb) 3.4.8
 
 https://github.com/mariadb-corporation/mariadb-connector-c
 
-Statically linked into the plugin DLL (built through vcpkg, port `libmariadb` 3.3.1). It is licensed under
+Statically linked into the plugin DLL (built through vcpkg, port `libmariadb` 3.4.8). It is licensed under
 the GNU Lesser General Public License version 2.1; the full license text is in `LICENSE-LGPL-2.1.txt`,
 which accompanies this file in the repository and in every release.
 
 - Source code of this version of the library: https://github.com/mariadb-corporation/mariadb-connector-c
-  (tag `v3.3.1`), as built by the vcpkg `libmariadb` port.
+  (tag `v3.4.8`), as built by the vcpkg `libmariadb` port.
 - To use a modified version of the library, rebuild the plugin from this repository's source: the
   complete source and Visual Studio project files are published here, and the library version is
   pinned through `vcpkg.json` (`builtin-baseline`). Point the build at your modified library and relink.
 
-## zlib 1.3
+## zlib 1.3.1
 
 https://zlib.net
 
@@ -80,60 +80,3 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 ```
-
-## ASA Permissions import library (`ASA/lib/Permissions.lib`)
-
-https://github.com/ArkServerApi/ASA-Plugins
-
-Import library of the ARK: Survival Ascended Permissions plugin, included so the ASA build links.
-
-MIT License
-
-Copyright (c) 2024 ArkServerApi
-Copyright (c) 2023-2024 Game Servers Hub
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-## ASE Permissions import library (`ASE/lib/Permissions.lib`)
-
-https://github.com/Michidu/Ark-Server-Plugins
-
-Import library of the ARK: Survival Evolved Permissions plugin, included so the ASE build links.
-
-MIT License
-
-Copyright (c) 2017 Michidu
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.

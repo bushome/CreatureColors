@@ -29,6 +29,14 @@ namespace
             mysql_options(handle, MYSQL_OPT_WRITE_TIMEOUT, &timeout);
             mysql_options(handle, MYSQL_SET_CHARSET_NAME, "utf8mb4");
 
+            // Connector/C 3.4+ requires TLS and verifies the server certificate by default, which fails
+            // against a MariaDB server without TLS ("SSL is required, but the server does not support it").
+            // Keep the plain connection CreatureColors has always used (same as Connector/C 3.3).
+            my_bool enforce = 0;
+            my_bool verify = 0;
+            mysql_optionsv(handle, MYSQL_OPT_SSL_ENFORCE, &enforce);
+            mysql_optionsv(handle, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+
             if (!mysql_real_connect(handle, s.host.c_str(), s.user.c_str(), s.password.c_str(),
                                     s.database.c_str(), s.port, nullptr, 0))
             {

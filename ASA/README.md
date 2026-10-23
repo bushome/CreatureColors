@@ -21,7 +21,8 @@ Valid color IDs are 1-100 and 128-254. Regions a species doesn't use (including 
 
 1. Clone with the AsaApi submodule: `git submodule add https://github.com/ArkServerApi/AsaApi.git extern/AsaApi` (or `git submodule update --init` if you cloned a repo that already has it).
 2. Put `AsaApi.lib` in `extern\AsaApi\out_lib\` (from the AsaApi release matching the submodule, or build `extern\AsaApi\AsaApi.sln`).
-3. `lib\Permissions.lib` (ASA Permissions import library) is included.
+3. Nothing from Permissions is needed to build: `src\PermissionsApi.h` looks `IsPlayerHasPermission` up in the loaded
+   `Permissions.dll` at runtime.
 4. Make sure Visual Studio has vcpkg integrated (`vcpkg integrate install`). The manifest pulls `libmariadb`, `sqlite3` and `fmt` and links them statically.
 5. Open `CreatureColors.sln`, Release | x64, build. Output lands in `out\`.
 
