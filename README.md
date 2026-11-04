@@ -104,3 +104,8 @@ backends and the project files differ by API, and the template table is keyed by
 `steam_id` on ASE. Valid color IDs also differ by game (ASA 1-100 and 128-254, ASE 1-100 and 201-226).
 Install, commands, configuration, the optional decay-cleanup triggers and build steps are in each
 folder's README and `docs/`; `STATUS.md` has the test results for both versions.
+
+## Development
+
+Developed with AI assistance (Claude). Every change was reviewed and tested on a dedicated test server
+before going live.
