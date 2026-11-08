@@ -1,7 +1,7 @@
 {
     "FullName": "CreatureColors",
     "Description": "Permission-gated chat commands to recolor your own or your tribe's tames, with saved color templates in MariaDB.",
-    "Version": 1.0,
-    "MinApiVersion": 2.03,
+    "Version": 1.1,
+    "MinApiVersion": 2.1,
     "Dependencies": ["Permissions"]
 }
