@@ -19,6 +19,8 @@ Valid color IDs are 1-100 and 128-254. Regions a species doesn't use (including 
 
 ## Build
 
+**Shared API checkout (optional):** the project builds against `extern\AsaApi` by default. To build several plugins against one shared AsaApi checkout instead, set the MSBuild property `AsaApiDir` to that folder, for example in a `Directory.Build.props` placed above the repo; the submodule then doesn't need to be checked out.
+
 1. Clone with the AsaApi submodule: `git submodule add https://github.com/ArkServerApi/AsaApi.git extern/AsaApi` (or `git submodule update --init` if you cloned a repo that already has it).
 2. Put `AsaApi.lib` in `extern\AsaApi\out_lib\` (from the AsaApi release matching the submodule, or build `extern\AsaApi\AsaApi.sln`).
 3. Nothing from Permissions is needed to build: `src\PermissionsApi.h` looks `IsPlayerHasPermission` up in the loaded
@@ -27,6 +29,8 @@ Valid color IDs are 1-100 and 128-254. Regions a species doesn't use (including 
 5. Open `CreatureColors.sln`, Release | x64, build. Output lands in `out\`.
 
 ## Install
+
+**VC++ runtime:** built with the v145 toolset (Visual Studio 2026) and `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR`, the same as AsaApi, so it also runs on servers with an older Visual C++ runtime. If the server crashes inside `std::mutex` or reports a missing `msvcp140.dll` entry point after installing, update the VC++ runtime DLLs in `ShooterGame\Binaries\Win64` (the latest files are in [ASABinaries](https://github.com/bushome/ASABinaries)) or install the current Visual C++ Redistributable (x64).
 
 Each build assembles a ready-to-copy folder at `out\CreatureColors\` containing `CreatureColors.dll`, `CreatureColors.pdb`, `PluginInfo.json`, `config.json`, `config.commented.json`, `THIRD-PARTY-NOTICES.md` and `LICENSE-LGPL-2.1.txt`. Keep the notice file(s) with the DLL
 when redistributing the plugin. Copy that folder to `ShooterGame\Binaries\Win64\ArkApi\Plugins\`, then fill in your MariaDB credentials in `config.json`. The plugin reads `config.json`, which has no comments; `config.commented.json` is an annotated copy that explains each setting.

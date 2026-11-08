@@ -19,6 +19,8 @@ Valid color IDs are 1-100 and 201-226. Color 227, which some mutated creatures c
 
 ## Build
 
+**Shared API checkout (optional):** the project builds against `extern\AseApi` by default. To build several plugins against one shared AseApi checkout instead, set the MSBuild property `AseApiDir` to that folder, for example in a `Directory.Build.props` placed above the repo; the submodule then doesn't need to be checked out.
+
 1. Put the ArkServerApi source in `extern\AseApi`: `git clone https://github.com/ArkServerApi/AseApi.git extern/AseApi`. Its `out_lib\ArkApi.lib` is used as is; you don't build the API. (The `main` branch is 3.56 plus header-only additions.)
 2. Nothing from Permissions is needed to build: `src\PermissionsApi.h` looks its functions up in the loaded `Permissions.dll`
    at runtime.
@@ -26,6 +28,8 @@ Valid color IDs are 1-100 and 201-226. Color 227, which some mutated creatures c
 4. Open `CreatureColors.sln`, Release | x64, build. Output lands in `out\`.
 
 ## Install
+
+**VC++ runtime:** built with the v145 toolset (Visual Studio 2026) and `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR`, so it also runs on servers with an older Visual C++ runtime. If the server crashes inside `std::mutex` or reports a missing `msvcp140.dll` entry point after installing, install the current Visual C++ Redistributable (x64).
 
 Each build assembles a ready-to-copy folder at `out\CreatureColors\` containing `CreatureColors.dll`, `CreatureColors.pdb`, `PluginInfo.json`, `config.json`, `config.commented.json`, `THIRD-PARTY-NOTICES.md` and `LICENSE-LGPL-2.1.txt`. Keep the notice file(s) with the DLL
 when redistributing the plugin. Copy that folder to `ShooterGame\Binaries\Win64\ArkApi\Plugins\`, then fill in your MariaDB credentials in `config.json`. The plugin reads `config.json`, which has no comments; `config.commented.json` is an annotated copy that explains each setting.
