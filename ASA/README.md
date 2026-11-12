@@ -14,7 +14,7 @@ Valid color IDs are 1-100 and 128-254. Regions a species doesn't use (including 
 
 ## Requirements
 
-- AsaApi 2.03 or newer, with the Permissions plugin installed.
+- AsaApi 2.11 or newer, with the Permissions plugin installed.
 - Current Visual C++ runtime files (x64). The plugin is built with the latest Visual Studio and expects the matching runtime; an outdated `msvcp140.dll` can crash the server on the first template request. Updated ASA runtime files are kept at https://github.com/bushome/ASABinaries.
 
 ## Build
